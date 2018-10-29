@@ -1,0 +1,6 @@
+{
+  "DisallowedDomains": [
+    "facebook",
+    "twitter"
+  ]
+}
