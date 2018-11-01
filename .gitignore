@@ -12,3 +12,6 @@
 *.out
 
 \.idea/
+
+gt-crawler
+dump.txt

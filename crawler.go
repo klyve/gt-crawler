@@ -1,7 +1,7 @@
 package main
 
 type Crawler interface {
-	Crawl(url string)
+	Crawl()
 }
 
 func main() {
