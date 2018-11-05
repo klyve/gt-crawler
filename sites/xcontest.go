@@ -1,4 +1,4 @@
-package main
+package sites
 
 import (
 	"context"
@@ -9,55 +9,41 @@ import (
 	"time"
 )
 
-type Chrome struct{}
-
-func (ch Chrome) Crawl() {
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
-	defer cancel()
-
-	c := createInstance(ctx)
-
-	sl := crawlXContest(c, ctx)
-
-	//Upload source links
-	for i := range sl {
-		logrus.Info(sl[i])
-	}
-}
-
 // crawlXContest crawls the daily score records from xcontest.org
 // https://www.xcontest.org/world/en/flights/daily-score-pg/
-func crawlXContest(ins *chromedp.CDP, ctx context.Context) (sl []string) {
+func CrawlXContest(ins *chromedp.CDP, ctx context.Context) (sl []string, err error) {
 	var nodes []*cdp.Node
 
 	task := getLinksFromInitialStartUrl("https://www.xcontest.org/world/en/flights/daily-score-pg/", &nodes)
 
-	err := ins.Run(ctx, task)
+	err = ins.Run(ctx, task)
 	if err != nil {
-		logrus.Error(err)
+		return
 	}
 
 	err = ins.Shutdown(ctx)
 	if err != nil {
-		logrus.Fatal(err)
+		return
 	}
 
 	err = ins.Wait()
 	if err != nil {
-		logrus.Fatal(err)
+		return
 	}
 
 	logrus.Info("Shutting down initial instance")
 
 	visitQueue := filterRealFlightLinks(nodes)
 
-	sl = visitDetailsPagesAndExtract(visitQueue, ctx)
+	sl, err = visitDetailsPagesAndExtract(visitQueue, ctx)
 	return
 }
 
-func visitDetailsPagesAndExtract(urls []string, ctx context.Context) (sl []string) {
-	ins := createInstance(ctx)
+func visitDetailsPagesAndExtract(urls []string, ctx context.Context) (sl []string, err error) {
+	ins, err := chromedp.New(ctx, chromedp.WithErrorf(logrus.Printf))
+	if err != nil {
+		return
+	}
 
 	for i := range urls {
 		var nodes []*cdp.Node
@@ -75,14 +61,14 @@ func visitDetailsPagesAndExtract(urls []string, ctx context.Context) (sl []strin
 		}
 	}
 
-	err := ins.Shutdown(ctx)
+	err = ins.Shutdown(ctx)
 	if err != nil {
-		logrus.Fatal(err)
+		return
 	}
 
 	err = ins.Wait()
 	if err != nil {
-		logrus.Fatal(err)
+		return
 	}
 
 	return
@@ -106,14 +92,6 @@ func getSourceLink(url string, nodes *[]*cdp.Node) chromedp.Tasks {
 	}
 }
 
-func createInstance(ctx context.Context) (ins *chromedp.CDP) {
-	ins, err := chromedp.New(ctx, chromedp.WithErrorf(logrus.Printf))
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	return ins
-}
 
 func filterRealFlightLinks(found []*cdp.Node) (visitQueue []string) {
 	pseudoHits := make([]string, len(found))
