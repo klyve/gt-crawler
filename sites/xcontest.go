@@ -92,7 +92,6 @@ func getSourceLink(url string, nodes *[]*cdp.Node) chromedp.Tasks {
 	}
 }
 
-
 func filterRealFlightLinks(found []*cdp.Node) (visitQueue []string) {
 	pseudoHits := make([]string, len(found))
 

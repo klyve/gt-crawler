@@ -1,5 +1,7 @@
 package main
 
 type State struct {
-	DisallowedDomains []string
+	DisallowedDomains   []string
+	CrawlerUID          string
+	FirebaseCredentials string
 }
