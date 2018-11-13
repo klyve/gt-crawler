@@ -6,9 +6,10 @@ import (
 	"google.golang.org/api/option"
 )
 
+
 type FAuth struct{}
 
-func (auth FAuth) GetFToken(cPath string, uid string) (token string, err error) {
+func (auth FAuth) GetToken(cPath string, uid string) (token string, err error) {
 	ctx := context.Background()
 
 	opt := option.WithCredentialsFile(cPath)

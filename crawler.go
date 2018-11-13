@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/GlidingTracks/gt-crawler/auth"
 	"github.com/GlidingTracks/gt-crawler/chrome"
 	"github.com/Sirupsen/logrus"
 	"io/ioutil"
@@ -27,7 +28,12 @@ func main() {
 	}
 
 	finished := make(chan bool)
-	go uploadLinks(links, finished, conf.FirebaseCredentials, conf.CrawlerUID)
+
+	up := &Upload{
+		Auth: auth.FAuth{},
+	}
+
+	go up.UploadLinks(links, finished, conf.FirebaseCredentials, conf.CrawlerUID)
 
 	uploaded := <-finished
 
