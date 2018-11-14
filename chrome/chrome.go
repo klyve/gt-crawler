@@ -30,6 +30,8 @@ func (ch Chrome) Crawl() (links []string, err error) {
 	return
 }
 
+
+
 func CreateInstance(ctx context.Context) (ins *chromedp.CDP) {
 	ins, err := chromedp.New(ctx, chromedp.WithErrorf(logrus.Printf))
 	if err != nil {

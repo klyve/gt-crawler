@@ -1,6 +1,8 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestGetFileName(t *testing.T) {
 	test := "https://www.xcontest.org/track.php?t=1542098368.16_5bea8dc027be5.igc"
@@ -14,18 +16,16 @@ func TestGetFileName(t *testing.T) {
 	}
 }
 
-func TestUpload_UploadLinks(t *testing.T) {
-	upload := &Upload{
-		Auth: mockAuth{},
+func TestGetDomain(t *testing.T) {
+	test := "https://www.xcontest.org/track.php?t=1542098368.16_5bea8dc027be5.igc"
+	expected := "https://www.xcontest.org"
+
+
+	actual := GetDomain(test)
+
+	if actual != expected {
+		t.Errorf("Expected: %v, got: %v", expected, actual)
 	}
-
-	testURLs := []string{"https://www.xcontest.org/track.php?t=1542098368.16_5bea8dc027be5.igc"}
-
-	success := make(chan bool, 1)
-
-	upload.UploadLinks(testURLs, success, "", "")
-
-	<- success
 }
 
 type mockAuth struct {}

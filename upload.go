@@ -2,17 +2,18 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"github.com/GlidingTracks/gt-crawler/auth"
 	"github.com/Sirupsen/logrus"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-const GtBackendURL = "https://gt-backend-test.herokuapp.com/"
+const GtBackendURL = "https://gt-backend-test.herokuapp.com/insertTrack"
 const TempFolder = "tmp"
 
 type Upload struct {
@@ -20,7 +21,6 @@ type Upload struct {
 }
 
 type UploadPayload struct {
-	Token string `json:"token"`
 	Private bool `json:"private"`
 	File string `json:"file"`
 }
@@ -28,21 +28,22 @@ type UploadPayload struct {
 func (up Upload) UploadLinks(links []string, finished chan bool, cPath string, uid string) {
 	token, err := up.Auth.GetToken(cPath, uid)
 	if err != nil {
-		logrus.Error("Could not get auth token")
+		logrus.Error("Could not get auth token", err)
 		return
 	}
 
 	for i := range links {
 		if err := uploadLink(links[i], token); err != nil {
+			logrus.Info(err)
 			logrus.Errorf("Could not upload link: %v", links[i])
 			return
 		}
 	}
 
-	/*if err := flushTemp(); err != nil {
+	if err := flushTemp(); err != nil {
 		logrus.Error("Could not flush temp folder")
 		return
-	}*/
+	}
 
 	// Upload finished
 	if finished != nil {
@@ -62,19 +63,26 @@ func uploadLink(link string, token string) (err error) {
 		return
 	}
 
-	body, err := createBody(filePath, token)
+	body, boundary, err := createMultipart(mustOpen(filePath))
+	if err != nil {
+		return
+	}
+
+	req, err := http.NewRequest(http.MethodPost, GtBackendURL, &body)
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
+	req.Header.Set("Content-Type", boundary)
+	req.Header.Set("token", token)
 
-	req, err := http.NewRequest(http.MethodPost, GtBackendURL, bytes.NewBuffer(body))
+	cl := &http.Client{}
+	res, err := cl.Do(req)
 	if err != nil {
-		logrus.Error(err)
 		return
 	}
 
-	logrus.Info(req)
+	logrus.Info(res.Status)
 
 	return
 }
@@ -93,7 +101,15 @@ func downloadFile(link string) (path string, err error) {
 	defer out.Close()
 
 	// Get the data
-	resp, err := http.Get(link)
+	req, err := http.NewRequest(http.MethodGet, link, nil)
+	if err != nil {
+		return
+	}
+	// anti scraper def
+	req.Header.Set("Referer", GetDomain(link))
+
+	cl := &http.Client{}
+	resp, err := cl.Do(req)
 	if err != nil {
 		return
 	}
@@ -118,13 +134,56 @@ func GetFileName(link string) (fileName string) {
 	return
 }
 
-func createBody(filePath string, token string) (body []byte, err error) {
-	upl := &UploadPayload{
-		Token: token,
-		Private: false,
-		File: filePath,
+func GetDomain(link string) (domain string) {
+	urlP, _ := url.Parse(link)
+
+	domain = urlP.Scheme + "://" +  urlP.Host
+	return
+}
+
+func createMultipart(file io.Reader) (b bytes.Buffer, boundary string, err error) {
+	w := multipart.NewWriter(&b)
+	var fw io.Writer
+
+	if x, ok := file.(io.Closer); ok {
+		defer x.Close()
 	}
 
-	body, err = json.Marshal(upl)
+	if x, ok := file.(*os.File); ok {
+		fw, err = w.CreateFormFile("file", x.Name())
+		if err != nil {
+			return
+		}
+	}
+
+	_, err = io.Copy(fw, file)
+	if err != nil {
+		return
+	}
+
+
+	fw, err = w.CreateFormField("field")
+	if err != nil {
+		return
+	}
+
+	buf := []byte("false")
+	_, err = io.Copy(fw, bytes.NewBuffer(buf))
+	if err != nil {
+		return
+	}
+
+	defer w.Close()
+
+	boundary = w.FormDataContentType()
+
 	return
+}
+
+func mustOpen(f string) *os.File {
+	r, err := os.Open(f)
+	if err != nil {
+		logrus.Fatal("Not a file", err)
+	}
+	return r
 }
