@@ -25,8 +25,8 @@ type UploadPayload struct {
 	File string `json:"file"`
 }
 
-func (up Upload) UploadLinks(links []string, finished chan bool, cPath string, uid string) {
-	token, err := up.Auth.GetToken(cPath, uid)
+func (up Upload) UploadLinks(links []string, finished chan bool, config *State) {
+	token, err := up.Auth.GetToken(config.FirebaseCredentials, config.CrawlerUID, config.GoogleAPIURL)
 	if err != nil {
 		logrus.Error("Could not get auth token", err)
 		return

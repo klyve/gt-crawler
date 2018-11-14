@@ -22,7 +22,7 @@ type authResponse struct {
 	ExpiresIn    string
 }
 
-func (auth FAuth) GetToken(cPath string, uid string, ) (token string, err error) {
+func (auth FAuth) GetToken(cPath string, uid string, urlGoogleAPI string) (token string, err error) {
 	ctx := context.Background()
 
 	opt := option.WithCredentialsFile(cPath)
@@ -42,7 +42,7 @@ func (auth FAuth) GetToken(cPath string, uid string, ) (token string, err error)
 		return
 	}
 
-	token, err = client.CustomToken(context.Background(), "o1Sz791YSHby0PCe51JlxSD6G533")
+	token, err = client.CustomToken(context.Background(), uid)
 	if err != nil {
 		logrus.Fatalf("error setting custom token: %v\n", err)
 	}
@@ -51,7 +51,7 @@ func (auth FAuth) GetToken(cPath string, uid string, ) (token string, err error)
 	"token": "` + token + `",
 	"returnSecureToken": true
 	}`)
-	res, err := http.Post("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=AIzaSyAppC_L-VHnTM1ezOvuiVCoKfFzFu6f5ZU", "application/json", bytes.NewBuffer(jsonStr))
+	res, err := http.Post(urlGoogleAPI, "application/json", bytes.NewBuffer(jsonStr))
 	if err != nil || res.StatusCode != http.StatusOK {
 		fmt.Printf("%+v\n", string(jsonStr))
 		logrus.Fatalf("error retrieving id token: %v\n", err)

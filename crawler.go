@@ -14,17 +14,16 @@ type Crawler interface {
 }
 
 func main() {
-	c := &chrome.Chrome{}
+	conf, err := getConfig()
+	if err != nil {
+		logrus.Fatal("Could not get config, storing result locally")
+	}
+
+	c:= &chrome.Chrome{}
 
 	links, err := c.Crawl()
 	if err != nil {
 		logrus.Fatal(err)
-	}
-
-	conf, err := getConfig()
-	if err != nil {
-		logrus.Error("Could not get config, storing result locally")
-		// TODO fallback routine for saving crawled result and try to upload again at start-up if existing stored files exist
 	}
 
 	finished := make(chan bool)
@@ -33,7 +32,7 @@ func main() {
 		Auth: auth.FAuth{},
 	}
 
-	go up.UploadLinks(links, finished, conf.FirebaseCredentials, conf.CrawlerUID)
+	go up.UploadLinks(links, finished, conf)
 
 	uploaded := <-finished
 
