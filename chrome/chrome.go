@@ -10,27 +10,28 @@ import (
 
 type Chrome struct{}
 
-func (ch Chrome) Crawl() (links []string, err error) {
-
+func (ch Chrome) Crawl(v []sites.ChromeSite, pipe chan []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
 	defer cancel()
 
 	c := CreateInstance(ctx)
 
-	links, err = sites.CrawlXContest(c, ctx)
-	if err != nil {
-		return
-	}
+	for i := range v {
+		links, err := v[i].Crawl(c, ctx)
+		if err != nil {
+			logrus.Error("Error during crawling, err: ", err.Error())
+			return
+		}
 
-	//Upload source links
-	for i := range links {
-		logrus.Info(links[i])
+		for i := range links {
+			logrus.Info(links[i])
+		}
+
+		pipe <- links
 	}
 
 	return
 }
-
-
 
 func CreateInstance(ctx context.Context) (ins *chromedp.CDP) {
 	ins, err := chromedp.New(ctx, chromedp.WithErrorf(logrus.Printf))

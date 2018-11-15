@@ -20,11 +20,6 @@ type Upload struct {
 	Auth auth.Authenticate
 }
 
-type UploadPayload struct {
-	Private bool `json:"private"`
-	File string `json:"file"`
-}
-
 func (up Upload) UploadLinks(links []string, finished chan bool, config *State) {
 	token, err := up.Auth.GetToken(config.FirebaseCredentials, config.CrawlerUID, config.GoogleAPIURL)
 	if err != nil {
@@ -34,8 +29,7 @@ func (up Upload) UploadLinks(links []string, finished chan bool, config *State) 
 
 	for i := range links {
 		if err := uploadLink(links[i], token); err != nil {
-			logrus.Info(err)
-			logrus.Errorf("Could not upload link: %v", links[i])
+			logrus.Errorf("Could not upload link: %v | error: %v", links[i], err)
 			return
 		}
 	}
@@ -82,7 +76,12 @@ func uploadLink(link string, token string) (err error) {
 		return
 	}
 
-	logrus.Info(res.Status)
+	if res.StatusCode != http.StatusOK {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(res.Body)
+		body := buf.String()
+		logrus.Errorf("Error in uploading: file: %v, status: %v, message: %v", filePath, res.Status, body)
+	}
 
 	return
 }

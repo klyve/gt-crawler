@@ -69,7 +69,7 @@ func (auth FAuth) GetToken(cPath string, uid string, urlGoogleAPI string) (token
 	}
 
 	token = resParsed.IDToken
-	logrus.Info(resParsed.IDToken)
+	logrus.Infof("Firebase token: %v", resParsed.IDToken)
 
 	return
 }
