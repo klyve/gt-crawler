@@ -4,20 +4,14 @@ import (
 	"context"
 	"github.com/GlidingTracks/gt-crawler/sites"
 	"github.com/Sirupsen/logrus"
-	"github.com/chromedp/chromedp"
-	"time"
 )
 
 type Chrome struct{}
 
-func (ch Chrome) Crawl(v []sites.ChromeSite, pipe chan []string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
-	defer cancel()
-
-	c := CreateInstance(ctx)
-
+func (ch Chrome) Crawl(ctx context.Context, v []sites.ChromeSite, pipe chan []string) {
 	for i := range v {
-		links, err := v[i].Crawl(c, ctx)
+
+		links, err := v[i].Crawl(ctx)
 		if err != nil {
 			logrus.Error("Error during crawling, err: ", err.Error())
 			return
@@ -31,13 +25,4 @@ func (ch Chrome) Crawl(v []sites.ChromeSite, pipe chan []string) {
 	}
 
 	return
-}
-
-func CreateInstance(ctx context.Context) (ins *chromedp.CDP) {
-	ins, err := chromedp.New(ctx, chromedp.WithErrorf(logrus.Printf))
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	return ins
 }

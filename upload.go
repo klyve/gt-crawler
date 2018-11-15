@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"github.com/GlidingTracks/gt-crawler/auth"
 	"github.com/Sirupsen/logrus"
 	"io"
@@ -11,38 +12,47 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
+// GtBackendURL holds the server url which to upload to.
 const GtBackendURL = "https://gt-backend-test.herokuapp.com/insertTrack"
+
+// TempFolder name of folder to temporary store files.
 const TempFolder = "tmp"
 
+// Upload struct holds authentication object. Determines which method to use to get tokens.
 type Upload struct {
 	Auth auth.Authenticate
 }
 
-func (up Upload) UploadLinks(links []string, finished chan bool, config *State) {
-	token, err := up.Auth.GetToken(config.FirebaseCredentials, config.CrawlerUID, config.GoogleAPIURL)
+// UploadLinks will download files and upload those files to the server.
+func (up Upload) UploadLinks(ctx context.Context, links []string, config *State) (finished bool) {
+	token, err := up.Auth.GetToken(ctx, config.FirebaseCredentials, config.CrawlerUID, config.GoogleAPIURL)
 	if err != nil {
 		logrus.Error("Could not get auth token", err)
 		return
 	}
 
+	wg := sync.WaitGroup{}
 	for i := range links {
-		if err := uploadLink(links[i], token); err != nil {
-			logrus.Errorf("Could not upload link: %v | error: %v", links[i], err)
-			return
-		}
+		wg.Add(1)
+		go func(j int) {
+			if err := uploadLink(links[j], token); err != nil {
+				logrus.Errorf("Could not upload link: %v | error: %v", links[j], err)
+			}
+			wg.Done()
+		}(i)
 	}
+	wg.Wait()
 
 	if err := flushTemp(); err != nil {
 		logrus.Error("Could not flush temp folder")
 		return
 	}
 
-	// Upload finished
-	if finished != nil {
-		finished <- true
-	}
+	finished = true
+	return
 }
 
 func flushTemp() (err error) {
@@ -123,6 +133,7 @@ func downloadFile(link string) (path string, err error) {
 	return
 }
 
+// GetFileName will strip characters which should be escaped, does not strip special characters per say.
 func GetFileName(link string) (fileName string) {
 	parts := strings.Split(link, "www.")
 
@@ -133,10 +144,11 @@ func GetFileName(link string) (fileName string) {
 	return
 }
 
+// GetDomain will return the base address from a url. e.g., http://www.test.com/api/info/add/ => http://www.test.com.
 func GetDomain(link string) (domain string) {
 	urlP, _ := url.Parse(link)
 
-	domain = urlP.Scheme + "://" +  urlP.Host
+	domain = urlP.Scheme + "://" + urlP.Host
 	return
 }
 
@@ -159,7 +171,6 @@ func createMultipart(file io.Reader) (b bytes.Buffer, boundary string, err error
 	if err != nil {
 		return
 	}
-
 
 	fw, err = w.CreateFormField("field")
 	if err != nil {

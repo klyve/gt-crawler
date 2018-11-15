@@ -8,7 +8,6 @@ func TestGetFileName(t *testing.T) {
 	test := "https://www.xcontest.org/track.php?t=1542098368.16_5bea8dc027be5.igc"
 	expected := "xcontest.org_track.php?t=1542098368.16_5bea8dc027be5.igc"
 
-
 	actual := GetFileName(test)
 
 	if actual != expected {
@@ -20,7 +19,6 @@ func TestGetDomain(t *testing.T) {
 	test := "https://www.xcontest.org/track.php?t=1542098368.16_5bea8dc027be5.igc"
 	expected := "https://www.xcontest.org"
 
-
 	actual := GetDomain(test)
 
 	if actual != expected {
@@ -28,7 +26,7 @@ func TestGetDomain(t *testing.T) {
 	}
 }
 
-type mockAuth struct {}
+type mockAuth struct{}
 
 func (mockAuth) GetToken(cPath string, uid string) (token string, err error) {
 	token = "test"

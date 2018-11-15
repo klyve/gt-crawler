@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"github.com/GlidingTracks/gt-crawler/auth"
 	"github.com/GlidingTracks/gt-crawler/chrome"
 	"github.com/GlidingTracks/gt-crawler/sites"
 	"github.com/MarkusAJacobsen/jConfig-go"
 	"github.com/Sirupsen/logrus"
 	"sync"
+	"time"
 )
 
-
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
+	defer cancel()
+
 	conf, err := getConfig()
 	if err != nil {
 		logrus.Fatal("Could not get config, storing result locally")
@@ -19,41 +23,38 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	links := crawl(&wg)
-	upload(conf, links, &wg)
+	links := crawl(ctx, &wg)
+	upload(ctx, conf, links)
 
 	wg.Wait()
 }
 
-func crawl(wg *sync.WaitGroup) (links []string){
+func crawl(ctx context.Context, wg *sync.WaitGroup) (links []string) {
 	defer wg.Done()
 
-	c:= &chrome.Chrome{}
+	c := &chrome.Chrome{}
 	cSites := []sites.ChromeSite{&sites.XContestChrome{}}
 	crawlRes := make(chan []string)
 
 	wg.Add(1)
-	go c.Crawl(cSites, crawlRes)
-	links = <- crawlRes
+	go c.Crawl(ctx, cSites, crawlRes)
+	links = <-crawlRes
 	close(crawlRes)
 
 	return
 }
 
-func upload(conf *State, links []string, wg *sync.WaitGroup) {
-	defer wg.Done()
+func upload(ctx context.Context, conf *State, links []string) {
+	if len(links) == 0 {
+		logrus.Info("No links uploaded, empty input")
+		return
+	}
 
-	uploadFinished := make(chan bool)
 	up := &Upload{
 		Auth: auth.FAuth{},
 	}
 
-	wg.Add(1)
-	go up.UploadLinks(links, uploadFinished, conf)
-	uploaded := <-uploadFinished
-	close(uploadFinished)
-
-
+	uploaded := up.UploadLinks(ctx, links, conf)
 	if uploaded {
 		logrus.Info("Links uploaded")
 	}
@@ -67,7 +68,7 @@ func getConfig() (state *State, err error) {
 	}
 
 	state = &State{}
-	err = conf.Get(state)
+	err = conf.Get(&state)
 
 	return
 }

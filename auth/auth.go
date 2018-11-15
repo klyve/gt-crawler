@@ -1,5 +1,7 @@
 package auth
 
+import "context"
+
 type Authenticate interface {
-	GetToken(cPath string, uid string, url string) (token string, err error)
+	GetToken(ctx context.Context, cPath string, uid string, url string) (token string, err error)
 }

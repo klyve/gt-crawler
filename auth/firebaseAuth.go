@@ -12,7 +12,6 @@ import (
 	"net/http"
 )
 
-
 type FAuth struct{}
 
 type authResponse struct {
@@ -22,9 +21,7 @@ type authResponse struct {
 	ExpiresIn    string
 }
 
-func (auth FAuth) GetToken(cPath string, uid string, urlGoogleAPI string) (token string, err error) {
-	ctx := context.Background()
-
+func (auth FAuth) GetToken(ctx context.Context, cPath string, uid string, urlGoogleAPI string) (token string, err error) {
 	opt := option.WithCredentialsFile(cPath)
 
 	app, err := firebase.NewApp(ctx, nil, opt)
