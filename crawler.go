@@ -44,7 +44,7 @@ func crawl(ctx context.Context, wg *sync.WaitGroup) (links []string) {
 	return
 }
 
-func upload(ctx context.Context, conf *State, links []string) {
+func upload(ctx context.Context, conf State, links []string) {
 	if len(links) == 0 {
 		logrus.Info("No links uploaded, empty input")
 		return
@@ -60,14 +60,14 @@ func upload(ctx context.Context, conf *State, links []string) {
 	}
 }
 
-func getConfig() (state *State, err error) {
+func getConfig() (state State, err error) {
 	conf := jConfigGo.Config{}
 
 	if err = conf.CreateConfig("state"); err != nil {
 		return
 	}
 
-	state = &State{}
+	state = State{}
 	err = conf.Get(&state)
 
 	return

@@ -27,7 +27,7 @@ type Upload struct {
 }
 
 // UploadLinks will download files and upload those files to the server.
-func (up Upload) UploadLinks(ctx context.Context, links []string, config *State) (finished bool) {
+func (up Upload) UploadLinks(ctx context.Context, links []string, config State) (finished bool) {
 	token, err := up.Auth.GetToken(ctx, config.FirebaseCredentials, config.CrawlerUID, config.GoogleAPIURL)
 	if err != nil {
 		logrus.Error("Could not get auth token", err)
