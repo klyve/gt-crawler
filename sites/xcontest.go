@@ -3,8 +3,6 @@ package sites
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"sort"
 	"strings"
 	"time"
@@ -45,10 +43,6 @@ func (xcc XContestChrome) Crawl(ctx context.Context) (sl []string, err error) {
 		logrus.Error(err)
 		return
 	}
-	if err := ioutil.WriteFile("elementScreenshot.png", buf, 0644); err != nil {
-		log.Fatal(err)
-	}
-
 	logrus.Info("Shutting down initial instance")
 
 	visitQueue := filterRealFlightLinks(nodes)
