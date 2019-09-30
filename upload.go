@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"github.com/GlidingTracks/gt-crawler/auth"
-	"github.com/Sirupsen/logrus"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -13,6 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/GlidingTracks/gt-crawler/auth"
+	"github.com/Sirupsen/logrus"
 )
 
 // GtBackendURL holds the server url which to upload to.
@@ -88,7 +89,10 @@ func uploadLink(link string, token string) (err error) {
 
 	if res.StatusCode != http.StatusOK {
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(res.Body)
+		_, err := buf.ReadFrom(res.Body)
+		if err != nil {
+			logrus.Errorf("Error reading from byte buffer %v", err)
+		}
 		body := buf.String()
 		logrus.Errorf("Error in uploading: file: %v, status: %v, message: %v", filePath, res.Status, body)
 	}
@@ -101,7 +105,11 @@ func downloadFile(link string) (path string, err error) {
 	path = filepath.Join(TempFolder, fileName)
 	// Create the file
 
-	os.MkdirAll(TempFolder, os.ModePerm)
+	err = os.MkdirAll(TempFolder, os.ModePerm)
+	if err != nil {
+		logrus.Errorf("Error: %v, unable to make directory in path %s with mode %v, ", err, TempFolder, os.ModePerm)
+		return
+	}
 
 	out, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {

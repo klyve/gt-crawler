@@ -2,20 +2,24 @@ package sites
 
 import (
 	"context"
-	"github.com/GlidingTracks/gt-crawler/crawlTime"
-	"github.com/MarkusAJacobsen/jConfig-go"
-	"github.com/Sirupsen/logrus"
-	"github.com/chromedp/cdproto/cdp"
-	"github.com/chromedp/chromedp"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/GlidingTracks/gt-crawler/crawlTime"
+	jConfigGo "github.com/MarkusAJacobsen/jConfig-go"
+	"github.com/Sirupsen/logrus"
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/chromedp"
 )
 
-const baseUrl = "https://www.xcontest.org/world/en/flights/daily-score-pg/"
+const baseURL = "https://www.xcontest.org/world/en/flights/daily-score-pg/"
 const filterDateQuery = "#filter[date]="
-const pagination = "@flights[start]="
 
+// XContestChrome struct used for instanced calls?
 type XContestChrome struct{}
 
 type xContestConfig struct {
@@ -27,30 +31,29 @@ func (xcc XContestChrome) Crawl(ctx context.Context) (sl []string, err error) {
 	var nodes []*cdp.Node
 
 	url, date, _ := getURL(true)
+	logrus.Error(url)
 
-	task := getLinksFromUrl(url, &nodes)
+	task := getLinksFromURL(url, &nodes)
 
-	ins := CreateInstance(ctx)
-	err = ins.Run(ctx, task)
+	parentCtx, cancel := chromedp.NewContext(ctx, chromedp.WithDebugf(logrus.Debugf))
+	defer cancel()
+
+	logrus.Info("Before run")
+	err = chromedp.Run(parentCtx, task)
+	logrus.Info("After run")
 	if err != nil {
+		logrus.Error(err)
 		return
 	}
-
-	err = ins.Shutdown(ctx)
-	if err != nil {
-		return
-	}
-
-	err = ins.Wait()
-	if err != nil {
-		return
+	if err := ioutil.WriteFile("elementScreenshot.png", buf, 0644); err != nil {
+		log.Fatal(err)
 	}
 
 	logrus.Info("Shutting down initial instance")
 
 	visitQueue := filterRealFlightLinks(nodes)
 
-	sl, err = visitDetailsPagesAndExtract(visitQueue, ctx)
+	sl, err = visitDetailsPagesAndExtract(parentCtx, visitQueue)
 	if err == nil || len(sl) == 0 {
 		return
 	}
@@ -64,7 +67,7 @@ func (xcc XContestChrome) Crawl(ctx context.Context) (sl []string, err error) {
 	}
 
 	// If still finding links, recursively continue to next date
-	csl, err := xcc.Crawl(ctx)
+	csl, err := xcc.Crawl(parentCtx)
 	if err != nil {
 		logrus.Error("Error during crawling, err: ", err)
 		return nil, err
@@ -77,7 +80,11 @@ func (xcc XContestChrome) Crawl(ctx context.Context) (sl []string, err error) {
 
 func writeCrawledDateToConfig(date string) (updated bool) {
 	conf := &jConfigGo.Config{}
-	conf.CreateConfig("xcontest")
+	err := conf.CreateConfig("xcontest")
+	if err != nil {
+		logrus.Errorf("Could not create confix xcontest %s", err)
+		return false
+	}
 
 	xcc := xContestConfig{}
 	if err := conf.Get(&xcc); err != nil {
@@ -94,17 +101,15 @@ func writeCrawledDateToConfig(date string) (updated bool) {
 	return true
 }
 
-func visitDetailsPagesAndExtract(urls []string, ctx context.Context) (sl []string, err error) {
-	ins, err := chromedp.New(ctx, chromedp.WithErrorf(logrus.Printf))
-	if err != nil {
-		return
-	}
+func visitDetailsPagesAndExtract(ctx context.Context, urls []string) (sl []string, err error) {
+	parentCtx, cancel := chromedp.NewContext(ctx, chromedp.WithErrorf(logrus.Printf))
+	defer cancel()
 
 	for i := range urls {
 		var nodes []*cdp.Node
 
 		task := getSourceLink(urls[i], &nodes)
-		err := ins.Run(ctx, task)
+		err := chromedp.Run(parentCtx, task)
 		if err != nil {
 			logrus.Error(err)
 		}
@@ -116,17 +121,10 @@ func visitDetailsPagesAndExtract(urls []string, ctx context.Context) (sl []strin
 		}
 	}
 
-	err = ins.Shutdown(ctx)
-	if err != nil {
-		return
-	}
-
-	err = ins.Wait()
-
 	return
 }
 
-func getLinksFromUrl(url string, nodes *[]*cdp.Node) chromedp.Tasks {
+func getLinksFromURL(url string, nodes *[]*cdp.Node) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.Navigate(url),
 		chromedp.Sleep(1 * time.Second),
@@ -162,7 +160,10 @@ func filterRealFlightLinks(found []*cdp.Node) (visitQueue []string) {
 
 func getURL(pagination bool) (url string, date string, err error) {
 	conf := &jConfigGo.Config{}
-	conf.CreateConfig("xcontest")
+	err = conf.CreateConfig("xcontest")
+	if err != nil {
+		return
+	}
 
 	xcc := xContestConfig{}
 	if err = conf.Get(&xcc); err != nil {
@@ -171,7 +172,7 @@ func getURL(pagination bool) (url string, date string, err error) {
 
 	if len(xcc.CrawledDates) == 0 {
 		date = crawlTime.GetDateString(0)
-		url = baseUrl + filterDateQuery + date
+		url = fmt.Sprintf("%s%s%s", baseURL, filterDateQuery, date)
 		return
 	}
 
@@ -179,16 +180,7 @@ func getURL(pagination bool) (url string, date string, err error) {
 
 	// Earliest date crawled
 	date = crawlTime.FindPreviousDate(xcc.CrawledDates[0])
-	url = baseUrl + filterDateQuery + date
+	url = fmt.Sprintf("%s%s%s", baseURL, filterDateQuery, date)
 
 	return
-}
-
-func CreateInstance(ctx context.Context) (ins *chromedp.CDP) {
-	ins, err := chromedp.New(ctx, chromedp.WithErrorf(logrus.Printf))
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	return ins
 }

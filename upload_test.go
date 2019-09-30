@@ -26,9 +26,10 @@ func TestGetDomain(t *testing.T) {
 	}
 }
 
-type mockAuth struct{}
+// Unused code
+//type mockAuth struct{}
 
-func (mockAuth) GetToken(cPath string, uid string) (token string, err error) {
-	token = "test"
-	return
-}
+//func (mockAuth) GetToken(cPath string, uid string) (token string, err error) {
+//token = "test"
+//return
+//}

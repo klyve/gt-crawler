@@ -2,16 +2,24 @@ package main
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/GlidingTracks/gt-crawler/auth"
 	"github.com/GlidingTracks/gt-crawler/chrome"
 	"github.com/GlidingTracks/gt-crawler/sites"
-	"github.com/MarkusAJacobsen/jConfig-go"
+	jConfigGo "github.com/MarkusAJacobsen/jConfig-go"
 	"github.com/Sirupsen/logrus"
-	"sync"
-	"time"
 )
 
+func init() {
+	//logrus.SetFormatter(&logrus.JSONFormatter{})
+	//logrus.SetOutput(os.Stdout)
+	logrus.SetLevel(logrus.DebugLevel)
+}
+
 func main() {
+	logrus.Info("Starting crawler")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
 	defer cancel()
 

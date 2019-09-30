@@ -2,12 +2,15 @@ package chrome
 
 import (
 	"context"
+
 	"github.com/GlidingTracks/gt-crawler/sites"
 	"github.com/Sirupsen/logrus"
 )
 
+// Chrome ...
 type Chrome struct{}
 
+// Crawl ....
 func (ch Chrome) Crawl(ctx context.Context, v []sites.ChromeSite, pipe chan []string) {
 	for i := range v {
 
@@ -23,6 +26,4 @@ func (ch Chrome) Crawl(ctx context.Context, v []sites.ChromeSite, pipe chan []st
 
 		pipe <- links
 	}
-
-	return
 }
