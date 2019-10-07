@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/chromedp/chromedp"
 	"sync"
 	"time"
 
@@ -29,9 +30,20 @@ func main() {
 		// CHECK STORAGE AND UPLOAD RESIDUALS
 	}
 
+	//cancle headless mode and open GUI
+	options := []chromedp.ExecAllocatorOption{
+		chromedp.Flag("headless", false),
+		chromedp.Flag("hide-scrollbars", false),
+		chromedp.Flag("mute-audio", false),
+		chromedp.UserAgent(`Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36`),
+	}
+	options = append(chromedp.DefaultExecAllocatorOptions[:], options...)
+	c, cc := chromedp.NewExecAllocator(ctx, options...)
+	defer cc()
+
 	var wg sync.WaitGroup
 
-	links := crawl(ctx, &wg)
+	links := crawl(c, &wg)
 	upload(ctx, conf, links)
 
 	wg.Wait()
