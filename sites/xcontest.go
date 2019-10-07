@@ -33,7 +33,7 @@ func (xcc XContestChrome) Crawl(ctx context.Context) (sl []string, err error) {
 
 	task := getLinksFromURL(url, &nodes)
 
-	parentCtx, cancel := chromedp.NewContext(ctx, chromedp.WithDebugf(logrus.Debugf))
+	parentCtx, cancel := chromedp.NewContext(ctx)
 	defer cancel()
 
 	logrus.Info("Before run")
@@ -96,7 +96,7 @@ func writeCrawledDateToConfig(date string) (updated bool) {
 }
 
 func visitDetailsPagesAndExtract(ctx context.Context, urls []string) (sl []string, err error) {
-	parentCtx, cancel := chromedp.NewContext(ctx, chromedp.WithErrorf(logrus.Printf))
+	parentCtx, cancel := chromedp.NewContext(ctx)
 	defer cancel()
 
 	for i := range urls {
